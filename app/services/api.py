@@ -13,7 +13,6 @@ class BaoStockView(View):
         super().__init__()
         lg = bs.login()
 
-
     def logout(self):
         bs.logout()
 
