@@ -93,7 +93,7 @@ class QueryDividendData(BaoStockView):
 
 
 '''
-@func: 通过API接口获取季频盈利能力信息，可以通过参数设置获取对应年份、季度数据，提供2007年至今数据
+@func: 获取季频盈利能力信息，可以通过参数设置获取对应年份、季度数据，提供2007年至今数据
 - code：股票代码，sh或sz.+6位数字代码，或者指数代码，如：sh.601398。sh：上海；sz：深圳。此参数不可为空；
 - year：统计年份，为空时默认当前年；
 - quarter：统计季度，为空时默认当前季度。不为空时只有4个取值：1，2，3，4。
@@ -140,7 +140,7 @@ class QueryProfitData(BaoStockView):
         return rs.error_code, rs.error_msg, list(map(lambda x: { attr: x.get(attr, '') for attr in self.attr_fields }, data)) if self.attr_fields else data
 
 '''
-@func: 通过API接口获取季频营运能力信息，可以通过参数设置获取对应年份、季度数据，提供2007年至今数据
+@func: 获取季频营运能力信息，可以通过参数设置获取对应年份、季度数据，提供2007年至今数据
 - code：股票代码，sh或sz.+6位数字代码，或者指数代码，如：sh.601398。sh：上海；sz：深圳。此参数不可为空；
 - year：统计年份，为空时默认当前年；
 - quarter：统计季度，为空时默认当前季度。不为空时只有4个取值：1，2，3，4。
@@ -187,7 +187,7 @@ class QueryOperationData(BaoStockView):
 
 
 '''
-@func: 通过API接口获取季频成长能力信息，可以通过参数设置获取对应年份、季度数据，提供2007年至今数据
+@func: 获取季频成长能力信息，可以通过参数设置获取对应年份、季度数据，提供2007年至今数据
 - code：股票代码，sh或sz.+6位数字代码，或者指数代码，如：sh.601398。sh：上海；sz：深圳。此参数不可为空；
 - year：统计年份，为空时默认当前年；
 - quarter：统计季度，为空时默认当前季度。不为空时只有4个取值：1，2，3，4。
@@ -234,7 +234,7 @@ class QueryGrowthData(BaoStockView):
 
 
 '''
-@func: 通过API接口获取季频偿债能力信息，可以通过参数设置获取对应年份、季度数据，提供2007年至今数据
+@func: 获取季频偿债能力信息，可以通过参数设置获取对应年份、季度数据，提供2007年至今数据
 - code：股票代码，sh或sz.+6位数字代码，或者指数代码，如：sh.601398。sh：上海；sz：深圳。此参数不可为空；
 - year：统计年份，为空时默认当前年；
 - quarter：统计季度，为空时默认当前季度。不为空时只有4个取值：1，2，3，4。
@@ -281,7 +281,7 @@ class QueryBalanceData(BaoStockView):
 
 
 '''
-@func: 通过API接口获取行业分类信息
+@func: 获取行业分类信息
 - code：A股股票代码，sh或sz.+6位数字代码，或者指数代码，如：sh.601398。sh：上海；sz：深圳。可以为空；
 - date：查询日期，格式XXXX-XX-XX，为空时默认最新日期。
 - attr_fields：过滤字段。取值范围：['updateDate', 'code', 'code_name', 'industry', 'industryClassification']
@@ -308,7 +308,7 @@ class QueryStockIndustry(BaoStockView):
 
 
 '''
-@func: 通过API接口获取上证50成分股信息
+@func: 获取上证50成分股信息
 - date：查询日期，格式XXXX-XX-XX，为空时默认最新日期
 - attr_fields：过滤字段。取值范围：['updateDate', 'code', 'code_name']
 '''
@@ -332,7 +332,7 @@ class QuerySz50Stocks(BaoStockView):
         return jsonify(result)
 
 '''
-@func: 通过API接口获取沪深300成分股信息
+@func: 获取沪深300成分股信息
 - date：查询日期，格式XXXX-XX-XX，为空时默认最新日期
 - attr_fields：过滤字段。取值范围：['updateDate', 'code', 'code_name']
 '''
@@ -357,7 +357,7 @@ class QueryHs300Stocks(BaoStockView):
 
 
 '''
-@func: 通过API接口获取中证500成分股信息
+@func: 获取中证500成分股信息
 - date：查询日期，格式XXXX-XX-XX，为空时默认最新日期
 - attr_fields：过滤字段。取值范围：['updateDate', 'code', 'code_name']
 '''
@@ -380,3 +380,28 @@ class QueryZz500Stocks(BaoStockView):
         self.logout()
         return jsonify(result)
 
+
+'''
+@func 获取证券基本资料
+- code：A股股票代码，sh或sz.+6位数字代码，或者指数代码，如：sh.601398。sh：上海；sz：深圳。可以为空；
+- code_name：股票名称，支持模糊查询，可以为空。
+'''
+class QueryStockBasic(BaoStockView):
+    def dispatch_request(self):
+        post_data = request.get_json()
+        code = post_data.get('code', '')
+        code_name = post_data.get('code_name', '')
+        attr_fields = post_data.get('attr_fields', None)
+        rs = bs.query_stock_basic(code=code, code_name=code_name)
+        data_list = []
+        while (rs.error_code == '0') & rs.next():
+            data_list.append(rs.get_row_data())
+        fields = ['code', 'code_name', 'ipoDate', 'outDate', 'type', 'status']
+        data = jsonWrapper(data_list, fields)
+        result = {
+          'code': 200 if rs.error_code == '0' else rs.error_code,
+          'data': list(map(lambda x: { attr: x.get(attr, '') for attr in attr_fields }, data)) if attr_fields else data,
+          'msg': rs.error_msg
+        }
+        self.logout()
+        return jsonify(result)

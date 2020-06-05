@@ -13,3 +13,4 @@ def routes(app):
     app.add_url_rule('/api/query_sz50_stocks',view_func=StockView.QuerySz50Stocks.as_view('query_sz50_stocks'), methods=['POST'])
     app.add_url_rule('/api/query_hs300_stocks',view_func=StockView.QueryHs300Stocks.as_view('query_hs300_stocks'), methods=['POST'])
     app.add_url_rule('/api/query_zz500_stocks',view_func=StockView.QueryZz500Stocks.as_view('query_zz500_stocks'), methods=['POST'])
+    app.add_url_rule('/api/query_stock_basic',view_func=StockView.QueryStockBasic.as_view('query_stock_basic'), methods=['POST'])
