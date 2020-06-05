@@ -13,7 +13,6 @@ class BaoStockView(View):
         super().__init__()
         lg = bs.login()
 
-
     def logout(self):
         bs.logout()
 
@@ -50,7 +49,7 @@ class QueryHistoryKDataPlus(BaoStockView):
 
 
 '''
-@func 除权除息信息
+@func: 除权除息信息
 - code：股票代码，sh或sz.+6位数字代码，或者指数代码，如：sh.601398。sh：上海；sz：深圳。此参数不可为空；
 - year：年份，如：2017。此参数不可为空；
 - yearType：年份类别，默认为"report":预案公告年份，可选项"operate":除权除息年份。此参数不可为空。
@@ -90,9 +89,16 @@ class QueryDividendData(BaoStockView):
         while (rs.error_code == '0') & rs.next():
             data_list.append(rs.get_row_data())
         data = jsonWrapper(data_list, fields)
-        return rs.error_code, rs.error_msg, list(map(lambda x: { attr: x[attr] for attr in self.attr_fields }, data)) if self.attr_fields else data
+        return rs.error_code, rs.error_msg, list(map(lambda x: { attr: x.get(attr, '') for attr in self.attr_fields }, data)) if self.attr_fields else data
 
 
+'''
+@func: 获取季频盈利能力信息，可以通过参数设置获取对应年份、季度数据，提供2007年至今数据
+- code：股票代码，sh或sz.+6位数字代码，或者指数代码，如：sh.601398。sh：上海；sz：深圳。此参数不可为空；
+- year：统计年份，为空时默认当前年；
+- quarter：统计季度，为空时默认当前季度。不为空时只有4个取值：1，2，3，4。
+- attr_fields：过滤字段。取值范围：'code', 'pubDate', 'statDate', 'NRTurnRatio', 'NRTurnDays', 'INVTurnRatio', 'INVTurnDays', 'CATurnRatio', 'AssetTurnRatio'
+'''
 class QueryProfitData(BaoStockView):
     def dispatch_request(self):
         post_data = request.get_json()
@@ -131,9 +137,15 @@ class QueryProfitData(BaoStockView):
         while (rs.error_code == '0') & rs.next():
             data_list.append(rs.get_row_data())
         data = jsonWrapper(data_list, fields)
-        return rs.error_code, rs.error_msg, list(map(lambda x: { attr: x[attr] for attr in self.attr_fields }, data)) if self.attr_fields else data
+        return rs.error_code, rs.error_msg, list(map(lambda x: { attr: x.get(attr, '') for attr in self.attr_fields }, data)) if self.attr_fields else data
 
-
+'''
+@func: 获取季频营运能力信息，可以通过参数设置获取对应年份、季度数据，提供2007年至今数据
+- code：股票代码，sh或sz.+6位数字代码，或者指数代码，如：sh.601398。sh：上海；sz：深圳。此参数不可为空；
+- year：统计年份，为空时默认当前年；
+- quarter：统计季度，为空时默认当前季度。不为空时只有4个取值：1，2，3，4。
+- attr_fields：过滤字段。取值范围：'code', 'pubDate', 'statDate', 'NRTurnRatio', 'NRTurnDays', 'INVTurnRatio', 'INVTurnDays', 'CATurnRatio', 'AssetTurnRatio'
+'''
 class QueryOperationData(BaoStockView):
     def dispatch_request(self):
         post_data = request.get_json()
@@ -171,4 +183,225 @@ class QueryOperationData(BaoStockView):
         while (rs.error_code == '0') & rs.next():
             data_list.append(rs.get_row_data())
         data = jsonWrapper(data_list, fields)
-        return rs.error_code, rs.error_msg, list(map(lambda x: { attr: x[attr] for attr in self.attr_fields }, data)) if self.attr_fields else data
+        return rs.error_code, rs.error_msg, list(map(lambda x: { attr: x.get(attr, '') for attr in self.attr_fields }, data)) if self.attr_fields else data
+
+
+'''
+@func: 获取季频成长能力信息，可以通过参数设置获取对应年份、季度数据，提供2007年至今数据
+- code：股票代码，sh或sz.+6位数字代码，或者指数代码，如：sh.601398。sh：上海；sz：深圳。此参数不可为空；
+- year：统计年份，为空时默认当前年；
+- quarter：统计季度，为空时默认当前季度。不为空时只有4个取值：1，2，3，4。
+- attr_fields：过滤字段。取值范围：'code', 'pubDate', 'statDate', 'YOYEquity', 'YOYAsset', 'YOYNI', 'YOYEPSBasic', 'YOYPNI'
+'''
+class QueryGrowthData(BaoStockView):
+    def dispatch_request(self):
+        post_data = request.get_json()
+        self.code = post_data.get('code', '')
+        self.year = post_data.get('year', datetime.datetime.now().year)
+        self.attr_fields = post_data.get('attr_fields', None)
+        quarter = post_data.get('quarter', '')
+        error_code = '0'
+        error_msg = 'success'
+        growth_list = []
+        if quarter:
+            error_code, error_msg, data = self.query_growth_data(quarter)
+            growth_list = data
+        else:
+            quarter = 1
+            while quarter <= 4:
+                error_code, error_msg, data = self.query_growth_data(quarter)
+                if error_code != '0':
+                  break
+                growth_list.append(data[0] if len(data) == 1 else {})
+                quarter += 1
+                
+        result = {
+          'code': 200 if error_code == '0' else error_code,
+          'data': growth_list,
+          'msg': error_msg
+        }
+        self.logout()
+        return jsonify(result)
+    
+    def query_growth_data(self, quarter):
+        data_list = []
+        rs = bs.query_growth_data(code=self.code, year=self.year, quarter=quarter)
+        fields = ['code', 'pubDate', 'statDate', 'YOYEquity', 'YOYAsset', 'YOYNI', 'YOYEPSBasic', 'YOYPNI']
+        while (rs.error_code == '0') & rs.next():
+            data_list.append(rs.get_row_data())
+        data = jsonWrapper(data_list, fields)
+        return rs.error_code, rs.error_msg, list(map(lambda x: { attr: x.get(attr, '') for attr in self.attr_fields }, data)) if self.attr_fields else data
+
+
+'''
+@func: 获取季频偿债能力信息，可以通过参数设置获取对应年份、季度数据，提供2007年至今数据
+- code：股票代码，sh或sz.+6位数字代码，或者指数代码，如：sh.601398。sh：上海；sz：深圳。此参数不可为空；
+- year：统计年份，为空时默认当前年；
+- quarter：统计季度，为空时默认当前季度。不为空时只有4个取值：1，2，3，4。
+- attr_fields：过滤字段。取值范围：'code', 'pubDate', 'statDate', 'currentRatio', 'quickRatio', 'cashRatio', 'YOYLiability', 'liabilityToAsset', 'assetToEquity'
+'''
+class QueryBalanceData(BaoStockView):
+    def dispatch_request(self):
+        post_data = request.get_json()
+        self.code = post_data.get('code', '')
+        self.year = post_data.get('year', datetime.datetime.now().year)
+        self.attr_fields = post_data.get('attr_fields', None)
+        quarter = post_data.get('quarter', '')
+        error_code = '0'
+        error_msg = 'success'
+        balance_list = []
+        if quarter:
+            error_code, error_msg, data = self.query_balance_data(quarter)
+            balance_list = data
+        else:
+            quarter = 1
+            while quarter <= 4:
+                error_code, error_msg, data = self.query_balance_data(quarter)
+                if error_code != '0':
+                  break
+                balance_list.append(data[0] if len(data) == 1 else {})
+                quarter += 1
+                
+        result = {
+          'code': 200 if error_code == '0' else error_code,
+          'data': balance_list,
+          'msg': error_msg
+        }
+        self.logout()
+        return jsonify(result)
+    
+    def query_balance_data(self, quarter):
+        data_list = []
+        rs = bs.query_balance_data(code=self.code, year=self.year, quarter=quarter)
+        fields = ['code', 'pubDate', 'statDate', 'currentRatio', 'quickRatio', 'cashRatio', 'YOYLiability', 'liabilityToAsset', 'assetToEquity']
+        while (rs.error_code == '0') & rs.next():
+            data_list.append(rs.get_row_data())
+        data = jsonWrapper(data_list, fields)
+        return rs.error_code, rs.error_msg, list(map(lambda x: { attr: x.get(attr, '') for attr in self.attr_fields }, data)) if self.attr_fields else data
+
+
+'''
+@func: 获取行业分类信息
+- code：A股股票代码，sh或sz.+6位数字代码，或者指数代码，如：sh.601398。sh：上海；sz：深圳。可以为空；
+- date：查询日期，格式XXXX-XX-XX，为空时默认最新日期。
+- attr_fields：过滤字段。取值范围：['updateDate', 'code', 'code_name', 'industry', 'industryClassification']
+'''
+class QueryStockIndustry(BaoStockView):
+    def dispatch_request(self):
+        post_data = request.get_json()
+        code = post_data.get('code', '')
+        date = post_data.get('date', '')
+        attr_fields = post_data.get('attr_fields', None)
+        rs = bs.query_stock_industry(code=code, date=date)
+        industry_list = []
+        while (rs.error_code == '0') & rs.next():
+            industry_list.append(rs.get_row_data())
+        fields = ['updateDate', 'code', 'code_name', 'industry', 'industryClassification']
+        data = jsonWrapper(industry_list, fields)
+        result = {
+          'code': 200 if rs.error_code == '0' else rs.error_code,
+          'data': list(map(lambda x: { attr: x.get(attr, '') for attr in attr_fields }, data)) if attr_fields else data,
+          'msg': rs.error_msg
+        }
+        self.logout()
+        return jsonify(result)
+
+
+'''
+@func: 获取上证50成分股信息
+- date：查询日期，格式XXXX-XX-XX，为空时默认最新日期
+- attr_fields：过滤字段。取值范围：['updateDate', 'code', 'code_name']
+'''
+class QuerySz50Stocks(BaoStockView):
+    def dispatch_request(self):
+        post_data = request.get_json()
+        date = post_data.get('date', '')
+        attr_fields = post_data.get('attr_fields', None)
+        rs = bs.query_sz50_stocks(date=date)
+        sz50_stocks = []
+        while (rs.error_code == '0') & rs.next():
+          sz50_stocks.append(rs.get_row_data())
+        fields = ['updateDate', 'code', 'code_name']
+        data = jsonWrapper(sz50_stocks, fields)
+        result = {
+          'code': 200 if rs.error_code == '0' else rs.error_code,
+          'data': list(map(lambda x: { attr: x.get(attr, '') for attr in attr_fields }, data)) if attr_fields else data,
+          'msg': rs.error_msg
+        }
+        self.logout()
+        return jsonify(result)
+
+'''
+@func: 获取沪深300成分股信息
+- date：查询日期，格式XXXX-XX-XX，为空时默认最新日期
+- attr_fields：过滤字段。取值范围：['updateDate', 'code', 'code_name']
+'''
+class QueryHs300Stocks(BaoStockView):
+    def dispatch_request(self):
+        post_data = request.get_json()
+        date = post_data.get('date', '')
+        attr_fields = post_data.get('attr_fields', None)
+        rs = bs.query_hs300_stocks(date=date)
+        hs50_stocks = []
+        while (rs.error_code == '0') & rs.next():
+          hs50_stocks.append(rs.get_row_data())
+        fields = ['updateDate', 'code', 'code_name']
+        data = jsonWrapper(hs50_stocks, fields)
+        result = {
+          'code': 200 if rs.error_code == '0' else rs.error_code,
+          'data': list(map(lambda x: { attr: x.get(attr, '') for attr in attr_fields }, data)) if attr_fields else data,
+          'msg': rs.error_msg
+        }
+        self.logout()
+        return jsonify(result)
+
+
+'''
+@func: 获取中证500成分股信息
+- date：查询日期，格式XXXX-XX-XX，为空时默认最新日期
+- attr_fields：过滤字段。取值范围：['updateDate', 'code', 'code_name']
+'''
+class QueryZz500Stocks(BaoStockView):
+    def dispatch_request(self):
+        post_data = request.get_json()
+        date = post_data.get('date', '')
+        attr_fields = post_data.get('attr_fields', None)
+        rs = bs.query_zz500_stocks(date=date)
+        zz500_stocks = []
+        while (rs.error_code == '0') & rs.next():
+          zz500_stocks.append(rs.get_row_data())
+        fields = ['updateDate', 'code', 'code_name']
+        data = jsonWrapper(zz500_stocks, fields)
+        result = {
+          'code': 200 if rs.error_code == '0' else rs.error_code,
+          'data': list(map(lambda x: { attr: x.get(attr, '') for attr in attr_fields }, data)) if attr_fields else data,
+          'msg': rs.error_msg
+        }
+        self.logout()
+        return jsonify(result)
+
+
+'''
+@func 获取证券基本资料
+- code：A股股票代码，sh或sz.+6位数字代码，或者指数代码，如：sh.601398。sh：上海；sz：深圳。可以为空；
+- code_name：股票名称，支持模糊查询，可以为空。
+'''
+class QueryStockBasic(BaoStockView):
+    def dispatch_request(self):
+        post_data = request.get_json()
+        code = post_data.get('code', '')
+        code_name = post_data.get('code_name', '')
+        attr_fields = post_data.get('attr_fields', None)
+        rs = bs.query_stock_basic(code=code, code_name=code_name)
+        data_list = []
+        while (rs.error_code == '0') & rs.next():
+            data_list.append(rs.get_row_data())
+        fields = ['code', 'code_name', 'ipoDate', 'outDate', 'type', 'status']
+        data = jsonWrapper(data_list, fields)
+        result = {
+          'code': 200 if rs.error_code == '0' else rs.error_code,
+          'data': list(map(lambda x: { attr: x.get(attr, '') for attr in attr_fields }, data)) if attr_fields else data,
+          'msg': rs.error_msg
+        }
+        self.logout()
+        return jsonify(result)
