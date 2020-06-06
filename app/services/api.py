@@ -34,7 +34,12 @@ class QueryHistoryKDataPlus(BaoStockView):
         end_date = post_data.get('end_date', '')
         frequency = post_data.get('frequency', 'd')
         adjustflag = post_data.get('adjustflag', '3')
-        attr_fields = post_data.get('attr_fields', ['date','code','open','high','low','close','preclose','volume','amount','adjustflag','turn','tradestatus','pctChg','isST'])
+        fields = ['date','code','open','high','low','close','preclose','volume','amount','adjustflag','turn','tradestatus','pctChg', 'peTTM', 'pbMRQ', 'psTTM', 'pcfNcfTTM', 'isST']
+        attr_fields = post_data.get('attr_fields', None)
+        if attr_fields:
+          attr_fields = list(filter(lambda x: x in fields, attr_fields))
+        else: 
+          attr_fields = fields
         rs = bs.query_history_k_data_plus(code, ','.join(attr_fields), start_date=start_date, end_date=end_date, frequency=frequency, adjustflag=adjustflag)
         data_list = []
         while (rs.error_code == '0') & rs.next():
