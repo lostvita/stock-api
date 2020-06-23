@@ -22,7 +22,7 @@ class BaoStockLogics(BaoStockBase):
       data_list = []
       while (rs.error_code == '0') & rs.next():
           data_list.append(rs.get_row_data())
-      self.logout()
+      # self.logout()
       return rs.error_code, rs.error_msg, jsonWrapper(data_list, attr_fields)
 
     def query_dividend_data(self, code, start_date, end_date, year_type, attr_fields):
